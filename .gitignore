@@ -1,0 +1,190 @@
+
+############################################# data #################################################
+ 
+data <-  matrix(c(3.3816 ,   3.3891,4.5279 ,   5.8542, 2.6557 ,   4.4120, 2.7652  ,  3.7154,2.8466 ,   4.1755, 3.8907  ,  6.4884, 3.4758  ,
+                  3.6328, 5.9113  ,  6.6808, 3.9289 ,   5.0984,  4.5618  ,  5.6233, 4.5741  ,  5.3977, 4.3717 ,   5.4612,4.1917  ,  4.9547,
+                  5.2441 ,   4.6615,2.8358 ,   3.7680, 5.6353  ,  6.3121,4.6863 ,   5.6652,2.8505 ,   4.6265,5.1102 ,   7.3632, 5.1826  ,  4.6465,
+                  5.7073  ,  6.6810,3.5797  ,  4.8028, 5.6394  ,  6.1204, 4.2635  ,  4.6894, 2.5365   , 3.8845,  3.2238  ,  4.9426, 4.9295   ,
+                  5.9550, 5.7930  ,  5.1084, 2.8168  ,  4.8190, 3.8888  ,  5.1004, 3.3432  ,  5.8930,5.8797  ,  5.5214, 3.1039  ,  3.8571,
+                  5.3315  ,  4.6807, 3.3754  ,  4.5654, 4.7767  ,  6.2544, 2.6757  ,  3.7310, 5.5003 ,   5.6795, 1.7971  ,  3.2475, 4.3225  ,
+                  5.1111, 4.4210  ,  6.0256, 3.1793   , 4.4369, 3.0335  ,  3.9788, 4.6093 ,   5.8798, 2.9638 ,   3.3002, 3.9718  ,  5.4077,
+                  1.1802  ,  2.8787, 1.9190  ,  5.0711,  3.9552  ,  4.5053, 5.1180  ,  6.0851), nrow=2)
+ 
+data <- t(data)
+ 
+initial_centroids <- matrix( c(3, 3, 6, 2, 8, 5), nrow=2 )
+ 
+initial_centroids <- t(initial_centroids)
+
+ 
+########################################################################
+################ Norma vectorial de dos vectores #######################
+#La función norma vectorial, que calcula como su propio nombre indica la norma de un vector:
+########################################################################
+
+norm_vec <- function(x) sqrt(sum(x^2))
+
+ 
+############################################################################
+########### Función para encontrar los centroides más cercanos #############
+#Esta función está encaminada al cálculo de los centroides más cercanos a un conjunto 
+#de puntos, partiendo de ése conjunto de puntos, así cómo del conjunto inicial de centroides:
+########################################################################### 
+
+near_centroids <- function (x, centroids){
+  rowCentroids<-nrow(centroids)
+  indexCent <- rep(0,nrow(x)) #
+   
+  for (i in 1:nrow(x)){ #numero de puntos de R2
+    vectDistances <- NULL
+    for (j in 1: nrow(centroids)){ #numero de centroides de R2
+      Distances <- norm_vec(x[i,]-centroids[j,])^2
+      vectDistances <- append(vectDistances, Distances)
+    }
+    minDist <- min(vectDistances)
+    minPos <- which(vectDistances == minDist)# posición de minDist en vectDistances
+    indexCent[i] <- minPos # guardo en el vector de los puntos más cercanos, el índice del centroide, que es la j del contador del for
+  }
+  indexCent # la función devuelve los centroides(según su posición en la lista de centroides) más cercanos para el conjunto de i puntos
+   
+}
+
+ 
+
+############################################################################################
+############## Inicializar centroides aleatoriamente #######################################
+#Esta función, inicializa los centroides de modo aleatorio. Pues a la hora de clusterizar
+#un conjunto de datos, será necesario, plantear varios conjuntos iniciales de centroides.
+#Ante la posibilidad de que los elegidos inicialmente estén sesgados y clustericen la muestra de un modo erroneo. 
+#Para evirtar estos problemas se inicializan varias veces los centroides de modo aleatorio 
+##############################################################################################
+
+inic_centroids <- function(x, numCentroids ){
+  # tomo los centroides de entre los datos x a clusterizar
+   
+  centroids <- matrix(0, numCentroids, ncol(x))
+   
+  rand <- sample(nrow(x)) # muestra aleatoria de puntos de longitud nrow(x)
+   
+  centroids <- x[rand[1:numCentroids], ] # de los puntos tomo aleatoriamente, tantos como el número de centroides 
+  centroids
+}
+
+ 
+
+####################################################################
+################## Computar los centroides #########################
+#Esta función devuelve una matriz con los nuevos centroides.
+#A su vez recibe x (conjunto de puntos), el vector centroides 
+#anterior (puntos asignados a cada centroide) y el número de centroides
+####################################################################
+
+centroides <- function(x, pointsCentroids, numCentroids){
+   
+  inicCentroids <- matrix(0, numCentroids, ncol(x)) # matriz 3 filas(num cenroid) y 2 col (coordenadas por punto)
+   
+  for (i in 1:numCentroids){ # num centroides
+    count <-0
+    for (j in 1:nrow(x)){ # num de puntos
+       
+      if (pointsCentroids[j] == i) { # pointsCentroids son los puntos
+                                     # en los que se fijan los centroides
+        count <- count + 1
+        inicCentroids[i,] = inicCentroids[i,] + x[j,] # para un centroide se acumulan todos los puntos
+      }
+    }
+     
+    inicCentroids[i,]  = inicCentroids[i,] / count # para cada centroide se hace la media
+    inicCentroids
+  }
+  inicCentroids
+   
+}
+
+ 
+##################################################################################################
+############## Función que aplica el algoritmo kmeans a los datos: PROGRAMA PRINCIPAL ############
+#Finalmente bastará con crear una función principal que aplica el algoritmo de K-means
+#mediante la aplicación sucesiva de las funciones diseñadas anteriormente:
+##################################################################################################
+ 
+K_means_algoritm <- function (x, initial_centroids){
+   
+  numbCentroids <- nrow(initial_centroids)
+   
+  indexPointsCentroids <- near_centroids(x, initial_centroids) # obtengo los centroides más cercanos
+  
+  meanCent <- centroides(data, indexPointsCentroids, numbCentroids)
+   
+  meanCent
+}
+
+ 
+###################################################################################
+########## Función que aplica kmeans para el número de clusters óptimo ############
+#Creamos una función principal, análoga a la anterior,  que consiste en la aplicación 
+#del algoritmo K-means, aunque en este caso elige el número de clusters óptimo 
+#que minimizan la varianza de los datos:
+###################################################################################
+ 
+K_means_algoritm1 <- function (x){
+  variance<-c()
+ 
+  for (i in 2:15) {
+     
+    centroids <- inic_centroids(x, i) # genero los grupos de centroides para distitos tamaños i
+    indexPointsCentroids<- near_centroids(x, centroids) # obtengo los centroides más cercanos
+    #  para cada uno de esos grupos i
+     
+    # ahora necesito seleccionar de esa larga lista de centroides los que me interesan:
+    for (j in 1:i){ # selecciono los puntos en función del número de clusters i mviéndose la j desde 1:i
+      pointsOfClusters <- data[which(indexPointsCentroids == j), ] # puntos de cada cluster para un conjunto de clusters de tamaño i
+ 
+      if (is.matrix(pointsOfClusters)){
+        var[j] <- mean(var(pointsOfClusters[,1]), var(pointsOfClusters[,2])) # varianza para cada cluster j
+         
+      } else {
+        var[j] <- mean(pointsOfClusters[1], pointsOfClusters[2]) # el último punto j, del cluster i-ésimo, es un vector
+         
+      }
+    }
+    variance[i] <- mean(var) # varianza acumulada de todos los clusters j's para un i
+     
+  }
+   
+  #Una vez decidida la i (número de clusters que minimizan la varianza) bastará con
+  # selecciono la varianza mínima y la posición i en la que aparece:
+  NumClusters <- which(variance == min(variance, na.rm = TRUE))
+   
+  centOptim <- inic_centroids(x, NumClusters) # centroides que minimizan la varianza  
+  indexPointsCentroidsOptim <- near_centroids(x, centOptim) # etiquetado de los puntos para esos centroides
+  meanCentOptim <- centroides(x, indexPointsCentroidsOptim, nrow(centOptim))
+  meanCentOptim
+}
+  
+
+ 
+###################################################################################################
+#################### Clusterización mediante el uso de paquetes de R ##############################
+###################################################################################################
+
+# vector de suma de cuadrados de cada uno de los componentes del grupo de cara a plotear
+# el ajuste del error en la elección de centroides frente al número de clusters
+for (i in 2:15) wss[i] <- sum(kmeans(data, centers=i)$withinss)
+ 
+#visualizamos el ajuste del error de la eleción de centroides frente al número de clusters:
+plot(1:15, wss, type="b", xlab="Number of Clusters", ylab="Within groups sum of squares")
+ 
+# clusterizando, 5 clusters parece una buena eleción:
+fit <- kmeans(data, 5) # 5 clusters
+ 
+#media de los clusters: centroides
+aggregate(data,by=list(fit$cluster),FUN=mean)
+ 
+# asignación de elementos por cluster
+clustering <- data.frame(data, fit$cluster)
+ 
+# densidad de los clusters
+table(clustering$fit.cluster)
+
+
